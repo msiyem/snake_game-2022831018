@@ -8,14 +8,13 @@
 #include <cstdlib>
 #include <string>
 
-// Constants for window and game dimensions
+//  ......................
 const int WINDOW_WIDTH = 854;
-const int WINDOW_HEIGHT = 480;
+const int WINDOW_HEIGHT = 580;
 const int RECTANGLE_SIZE = 20;
 const int FOOD_SIZE = 20;
-const int SNAKE_SPEED = 150; // Speed in milliseconds
+const int SNAKE_SPEED = 150;
 
-// Structure to represent each segment of the snake
 struct Snake {
     int x, y;
     double angle; // Angle for rotation
@@ -124,7 +123,7 @@ int main(int argc, char* args[]) {
     }
 
     // Load font
-    TTF_Font* font = TTF_OpenFont("font.ttf", 24);
+    TTF_Font* font = TTF_OpenFont("font.ttf", 35);
     if (font == NULL) {
         std::cerr << "Failed to load font! SDL_ttf Error: " << TTF_GetError() << std::endl;
         SDL_DestroyRenderer(renderer);
@@ -146,18 +145,6 @@ int main(int argc, char* args[]) {
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, coverTexture, NULL, NULL);
 
-    // Render "SNAKE GAME" text on top of the cover photo
-    SDL_Color textColor = {255, 255, 255, 255}; // White color for text
-    SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "SNAKE GAME", textColor);
-    SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
-    SDL_Rect messageRect;
-    messageRect.x = (WINDOW_WIDTH - surfaceMessage->w) / 2;
-    messageRect.y = 20; // Position the text at the top
-    messageRect.w = surfaceMessage->w;
-    messageRect.h = surfaceMessage->h;
-    SDL_RenderCopy(renderer, message, NULL, &messageRect);
-    SDL_FreeSurface(surfaceMessage);
-    SDL_DestroyTexture(message);
 
     SDL_RenderPresent(renderer);
 
@@ -374,7 +361,7 @@ int main(int argc, char* args[]) {
         SDL_RenderCopyEx(renderer, headTexture, NULL, &headRect, body[0].angle, NULL, SDL_FLIP_NONE);
 
         // Render the score
-        SDL_Color scoreColor = {255, 255, 255, 255}; // White color for score
+        SDL_Color scoreColor = {0, 51, 102, 255}; // White color for score
         std::string scoreText = "Score: " + std::to_string(score);
         SDL_Surface* scoreSurface = TTF_RenderText_Solid(font, scoreText.c_str(), scoreColor);
         SDL_Texture* scoreTexture = SDL_CreateTextureFromSurface(renderer, scoreSurface);
@@ -390,7 +377,7 @@ int main(int argc, char* args[]) {
         // Display game over message if the game is over
         if (gameover) {
             SDL_Color textColor = {255, 0, 0, 255}; // Red color for text
-            SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "GAME OVER", textColor);
+            SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "YOUR GAME IS OVER", textColor);
             SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
             SDL_Rect messageRect;
             messageRect.x = WINDOW_WIDTH / 2 - surfaceMessage->w / 2;
@@ -400,6 +387,18 @@ int main(int argc, char* args[]) {
             SDL_RenderCopy(renderer, message, NULL, &messageRect);
             SDL_FreeSurface(surfaceMessage);
             SDL_DestroyTexture(message);
+            // ...................
+         std::string finalScoreText = "SCORE : " + std::to_string(score);
+        SDL_Surface* finalScoreSurface = TTF_RenderText_Solid(font, finalScoreText.c_str(), textColor);
+        SDL_Texture* finalScoreTexture = SDL_CreateTextureFromSurface(renderer, finalScoreSurface);
+        SDL_Rect finalScoreRect;
+        finalScoreRect.x = WINDOW_WIDTH / 2 - finalScoreSurface->w / 2;
+        finalScoreRect.y = messageRect.y + messageRect.h + 10; // 10 pixels below the "GAME OVER" message
+        finalScoreRect.w = finalScoreSurface->w;
+        finalScoreRect.h = finalScoreSurface->h;
+        SDL_RenderCopy(renderer, finalScoreTexture, NULL, &finalScoreRect);
+        SDL_FreeSurface(finalScoreSurface);
+        SDL_DestroyTexture(finalScoreTexture);
         }
 
         SDL_RenderPresent(renderer);
