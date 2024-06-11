@@ -2,6 +2,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
+
 #include <vector>
 #include <cmath>
 #include <ctime>
@@ -14,6 +16,21 @@ const int WINDOW_HEIGHT = 580;
 const int RECTANGLE_SIZE = 20;
 const int FOOD_SIZE = 20;
 const int SNAKE_SPEED = 150;
+bool quit = false;
+Mix_Chunk* eatSound =NULL;
+Mix_Music* music =NULL;
+Mix_Music* gameOverMusic =NULL;
+Mix_Music* gamebackground = NULL;
+SDL_Window* window =NULL;
+SDL_Renderer* renderer =NULL;
+TTF_Font* font = NULL;
+SDL_Texture* coverTexture =NULL;
+SDL_Texture* headTexture =NULL;
+SDL_Texture* bodyTexture =NULL;
+SDL_Texture* tailTexture =NULL;
+SDL_Texture* backgroundTexture =NULL;
+SDL_Texture* foodTexture =NULL;
+SDL_Texture* bonusFoodTexture = NULL;
 
 struct Snake {
     int x, y;
@@ -67,15 +84,21 @@ SDL_Texture* loadTexture(SDL_Renderer* renderer, const std::string& path) {
 }
 
 // Function to clean up and quit SDL
-void cleanUp(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font, std::vector<SDL_Texture*> textures) {
+void cleanUp(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font,  Mix_Music* music, std::vector<SDL_Texture*> textures) {
     for (auto texture : textures) {
         SDL_DestroyTexture(texture);
     }
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     TTF_CloseFont(font);
+    Mix_FreeMusic(music);
+    Mix_Quit();
+
     TTF_Quit();
     IMG_Quit();
+    Mix_FreeChunk(eatSound);
+
+    Mix_CloseAudio();
     SDL_Quit();
 }
 
@@ -89,59 +112,97 @@ int main(int argc, char* args[]) {
     // Initialize SDL_ttf
     if (TTF_Init() < 0) {
         std::cerr << "SDL_ttf could not initialize! SDL_ttf Error: " << TTF_GetError() << std::endl;
-        SDL_Quit();
+        quit=true;
         return 1;
     }
 
     // Initialize SDL_image
     if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
         std::cerr << "SDL_image could not initialize! SDL_image Error: " << IMG_GetError() << std::endl;
-        TTF_Quit();
-        SDL_Quit();
+       quit=true;
+        return 1;
+    }
+    // Initialize SDL_mixer
+if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+    std::cerr << "SDL_mixer could not initialize! SDL_mixer Error: " << Mix_GetError() << std::endl;
+    quit=true;
+    return 1;
+}
+
+// Load sound effects
+
+
+music = Mix_LoadMUS("startgame.mp3");
+    if (!music) {
+        std::cerr << "Failed to load music! SDL_mixer Error: " << Mix_GetError() << std::endl;
+        Mix_Quit();
+        quit=true;
         return 1;
     }
 
+gameOverMusic = Mix_LoadMUS("gameover.mp3");
+if (!gameOverMusic) {
+    std::cerr << "Failed to load game over music! SDL_mixer Error: " << Mix_GetError() << std::endl;
+    Mix_FreeMusic(music);
+    Mix_Quit();
+    quit=true;
+    return 1;
+}
+gamebackground= Mix_LoadMUS("gameback.mp3");
+if (!gamebackground) {
+    std::cerr << "Failed to load game over music! SDL_mixer Error: " << Mix_GetError() << std::endl;
+    Mix_FreeMusic(music);
+    Mix_Quit();
+    quit=true;
+    return 1;
+}
+
+eatSound = Mix_LoadWAV("eat.wav");
+if (!eatSound) {
+    std::cerr << "Failed to load sound effects! SDL_mixer Error: " << Mix_GetError() << std::endl;
+    Mix_CloseAudio();
+    quit=true;
+    return 1;
+}
+
     // Create window
-    SDL_Window* window = SDL_CreateWindow("Snake Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH,WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
+    window = SDL_CreateWindow("Snake Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH,WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
     if (window == NULL) {
         std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
-        IMG_Quit();
-        TTF_Quit();
-        SDL_Quit();
+        Mix_FreeMusic(music);
+        Mix_Quit();
+        quit=true;
         return 1;
     }
 
     // Create renderer
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (renderer == NULL) {
         std::cerr << "Renderer could not be created! SDL_Error: " << SDL_GetError() << std::endl;
         SDL_DestroyWindow(window);
-        IMG_Quit();
-        TTF_Quit();
-        SDL_Quit();
+        Mix_FreeMusic(music);
+        Mix_Quit();
+        quit=true;
         return 1;
     }
 
     // Load font
-    TTF_Font* font = TTF_OpenFont("font.ttf", 35);
+    font = TTF_OpenFont("font.ttf", 35);
     if (font == NULL) {
         std::cerr << "Failed to load font! SDL_ttf Error: " << TTF_GetError() << std::endl;
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
-        IMG_Quit();
-        TTF_Quit();
-        SDL_Quit();
+        quit=true;
         return 1;
     }
 
-    // Load cover photo
-    SDL_Texture* coverTexture = loadTexture(renderer, "snake_cover.png");
+    coverTexture = loadTexture(renderer, "snake_cover.png");
     if (!coverTexture) {
-        cleanUp(window, renderer, font, {});
+        cleanUp(window, renderer, font,music, {});
         return 1;
     }
+    Mix_PlayMusic(music, -1);
 
-    // Show cover photo
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, coverTexture, NULL, NULL);
 
@@ -154,58 +215,62 @@ int main(int argc, char* args[]) {
     while (!startGame) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
-                cleanUp(window, renderer, font, {coverTexture});
+            cleanUp(window, renderer, font,music,{coverTexture});
+            Mix_FreeChunk(eatSound);
+            Mix_CloseAudio();
                 return 0;
             } else if (e.type == SDL_KEYDOWN) {
                 startGame = true;
+                  
             }
         }
     }
+    
+    
 
     SDL_DestroyTexture(coverTexture);
+    
 
     // Load snake head, body, and tail images
-    SDL_Texture* headTexture = loadTexture(renderer, "snake_head.png");
+    headTexture = loadTexture(renderer, "snake_head.png");
+
     if (!headTexture) {
-        cleanUp(window, renderer, font, {});
+        cleanUp(window, renderer, font,music, {});
         return 1;
     }
 
-    SDL_Texture* bodyTexture = loadTexture(renderer, "snake_body.png");
+    bodyTexture = loadTexture(renderer, "snake_body.png");
     if (!bodyTexture) {
-        cleanUp(window, renderer, font, {headTexture});
+        cleanUp(window, renderer, font,music, {headTexture});
         return 1;
     }
 
-    SDL_Texture* tailTexture = loadTexture(renderer, "snake_tail.png");
+    tailTexture = loadTexture(renderer, "snake_tail.png");
     if (!tailTexture) {
-        cleanUp(window, renderer, font, {headTexture, bodyTexture});
+        cleanUp(window, renderer, font,music, {headTexture, bodyTexture});
         return 1;
     }
 
-    // Load background image
-    SDL_Texture* backgroundTexture = loadTexture(renderer, "snake_background.png");
+    backgroundTexture = loadTexture(renderer, "snake_background.png");
     if (!backgroundTexture) {
-        cleanUp(window, renderer, font, {headTexture, bodyTexture, tailTexture});
+        cleanUp(window, renderer, font,music, {headTexture, bodyTexture, tailTexture});
         return 1;
     }
 
-    // Load food image
-    SDL_Texture* foodTexture = loadTexture(renderer, "food.png");
+    foodTexture = loadTexture(renderer, "food.png");
     if (!foodTexture) {
-        cleanUp(window, renderer, font, {headTexture, bodyTexture, tailTexture, backgroundTexture});
+        cleanUp(window, renderer, font,music, {headTexture, bodyTexture, tailTexture, backgroundTexture});
         return 1;
     }
 
-    // Load bonus food image
-    SDL_Texture* bonusFoodTexture = loadTexture(renderer, "bonus_food.png");
+    bonusFoodTexture = loadTexture(renderer, "bonus_food.png");
     if (!bonusFoodTexture) {
-        cleanUp(window, renderer, font, {headTexture, bodyTexture, tailTexture, backgroundTexture, foodTexture});
+        cleanUp(window, renderer, font,music, {headTexture, bodyTexture, tailTexture, backgroundTexture, foodTexture});
         return 1;
     }
 
     // Game loop variables
-    bool quit = false;
+   
     std::vector<Snake> body;
     // Initialize snake with head, body, and tail segments
     body.push_back({WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, 0.0}); // Head
@@ -214,6 +279,7 @@ int main(int argc, char* args[]) {
     srand(time(NULL));
     int foodX = (rand() % (WINDOW_WIDTH / FOOD_SIZE)) * FOOD_SIZE;
     int foodY = (rand() % (WINDOW_HEIGHT / FOOD_SIZE)) * FOOD_SIZE;
+
     while (checkFoodOnSnake(body, foodX, foodY)) {
         foodX = (rand() % (WINDOW_WIDTH / FOOD_SIZE)) * FOOD_SIZE;
         foodY = (rand() % (WINDOW_HEIGHT / FOOD_SIZE)) * FOOD_SIZE;
@@ -230,9 +296,16 @@ int main(int argc, char* args[]) {
     int bonusFoodX = 0;
     int bonusFoodY = 0;
     Uint32 bonusFoodStartTime = 0;
+    auto currentMusic=music;
+    Mix_PlayMusic(currentMusic, -1);
 
     // Main game loop
     while (!quit) {
+        // if( startGame && currentMusic!=gamebackground)
+        // {
+        //     currentMusic=gamebackground;
+        //      Mix_PlayMusic(currentMusic, -1);
+        // }
         // Handle events
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
@@ -266,7 +339,8 @@ int main(int argc, char* args[]) {
                 }
             }
         }
-
+       
+       
         if (!gameover) {
             // Move snake
             int nextX = body[0].x + dx;
@@ -281,6 +355,7 @@ int main(int argc, char* args[]) {
 
             // Check if snake eats regular food
             if (checkCollision(body[0], foodX, foodY)) {
+                Mix_PlayChannel(-1, eatSound, 0);  // Play eat sound
                 ateFood = true;
                 foodX = (rand() % (WINDOW_WIDTH / FOOD_SIZE)) * FOOD_SIZE;
                 foodY = (rand() % (WINDOW_HEIGHT / FOOD_SIZE)) * FOOD_SIZE;
@@ -288,6 +363,7 @@ int main(int argc, char* args[]) {
                     foodX = (rand() % (WINDOW_WIDTH / FOOD_SIZE)) * FOOD_SIZE;
                     foodY = (rand() % (WINDOW_HEIGHT / FOOD_SIZE)) * FOOD_SIZE;
                 }
+                
                 // Increase score by 10
                 score += 10;
                 foodEatenCount++;
@@ -306,6 +382,7 @@ int main(int argc, char* args[]) {
 
             // Check if snake eats bonus food
             if (bonusFoodActive && checkCollision(body[0], bonusFoodX, bonusFoodY)) {
+                Mix_PlayChannel(-1, eatSound, 0);  // Play eat sound
                 score += 50;
                 bonusFoodActive = false;
             }
@@ -373,6 +450,11 @@ int main(int argc, char* args[]) {
         SDL_RenderCopy(renderer, scoreTexture, NULL, &scoreRect);
         SDL_FreeSurface(scoreSurface);
         SDL_DestroyTexture(scoreTexture);
+        if(gameover && currentMusic!=gameOverMusic){
+            currentMusic=gameOverMusic;
+            Mix_PlayMusic(currentMusic, -1);
+
+        }
 
         // Display game over message if the game is over
         if (gameover) {
@@ -404,9 +486,11 @@ int main(int argc, char* args[]) {
         SDL_RenderPresent(renderer);
         SDL_Delay(SNAKE_SPEED);
     }
-
+    // Clean up game over music
+    Mix_FreeMusic(gameOverMusic);
+    Mix_FreeMusic(gamebackground);
     // Cleanup
-    cleanUp(window, renderer, font, {headTexture, bodyTexture, tailTexture, backgroundTexture, foodTexture, bonusFoodTexture});
-
+    cleanUp(window, renderer, font,music, {headTexture, bodyTexture, tailTexture, backgroundTexture, foodTexture, bonusFoodTexture});
+    
     return 0;
 }
