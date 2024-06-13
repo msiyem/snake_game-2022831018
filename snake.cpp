@@ -18,9 +18,10 @@ const int FOOD_SIZE = 20;
 const int SNAKE_SPEED = 150;
 bool quit = false;
 Mix_Chunk* eatSound =NULL;
-Mix_Music* music =NULL;
+Mix_Music* startMusic =NULL;
 Mix_Music* gameOverMusic =NULL;
-Mix_Music* gamebackground = NULL;
+Mix_Music* gameBackground = NULL;
+Mix_Chunk* bonusSound=NULL;
 SDL_Window* window =NULL;
 SDL_Renderer* renderer =NULL;
 TTF_Font* font = NULL;
@@ -84,14 +85,14 @@ SDL_Texture* loadTexture(SDL_Renderer* renderer, const std::string& path) {
 }
 
 // Function to clean up and quit SDL
-void cleanUp(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font,  Mix_Music* music, std::vector<SDL_Texture*> textures) {
+void cleanUp(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font,  Mix_Music* startMusic, std::vector<SDL_Texture*> textures) {
     for (auto texture : textures) {
         SDL_DestroyTexture(texture);
     }
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     TTF_CloseFont(font);
-    Mix_FreeMusic(music);
+    Mix_FreeMusic(startMusic);
     Mix_Quit();
 
     TTF_Quit();
@@ -132,8 +133,8 @@ if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
 // Load sound effects
 
 
-music = Mix_LoadMUS("startgame.mp3");
-    if (!music) {
+startMusic = Mix_LoadMUS("startgame.mp3");
+    if (!startMusic) {
         std::cerr << "Failed to load music! SDL_mixer Error: " << Mix_GetError() << std::endl;
         Mix_Quit();
         quit=true;
@@ -143,15 +144,15 @@ music = Mix_LoadMUS("startgame.mp3");
 gameOverMusic = Mix_LoadMUS("gameover.mp3");
 if (!gameOverMusic) {
     std::cerr << "Failed to load game over music! SDL_mixer Error: " << Mix_GetError() << std::endl;
-    Mix_FreeMusic(music);
+    Mix_FreeMusic(startMusic);
     Mix_Quit();
     quit=true;
     return 1;
 }
-gamebackground= Mix_LoadMUS("gameback.mp3");
-if (!gamebackground) {
+gameBackground= Mix_LoadMUS("gameback.mp3");
+if (!gameBackground) {
     std::cerr << "Failed to load game over music! SDL_mixer Error: " << Mix_GetError() << std::endl;
-    Mix_FreeMusic(music);
+    Mix_FreeMusic(startMusic);
     Mix_Quit();
     quit=true;
     return 1;
@@ -164,12 +165,19 @@ if (!eatSound) {
     quit=true;
     return 1;
 }
+bonusSound = Mix_LoadWAV("ting.wav");
+if (!eatSound) {
+    std::cerr << "Failed to load sound effects! SDL_mixer Error: " << Mix_GetError() << std::endl;
+    Mix_CloseAudio();
+    quit=true;
+    return 1;
+}
 
     // Create window
     window = SDL_CreateWindow("Snake Game", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH,WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
     if (window == NULL) {
         std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
-        Mix_FreeMusic(music);
+        Mix_FreeMusic(startMusic);
         Mix_Quit();
         quit=true;
         return 1;
@@ -180,7 +188,7 @@ if (!eatSound) {
     if (renderer == NULL) {
         std::cerr << "Renderer could not be created! SDL_Error: " << SDL_GetError() << std::endl;
         SDL_DestroyWindow(window);
-        Mix_FreeMusic(music);
+        Mix_FreeMusic(startMusic);
         Mix_Quit();
         quit=true;
         return 1;
@@ -198,10 +206,10 @@ if (!eatSound) {
 
     coverTexture = loadTexture(renderer, "snake_cover.png");
     if (!coverTexture) {
-        cleanUp(window, renderer, font,music, {});
+        cleanUp(window, renderer, font, startMusic, {});
         return 1;
     }
-    Mix_PlayMusic(music, -1);
+    Mix_PlayMusic(startMusic, -1);
 
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, coverTexture, NULL, NULL);
@@ -215,7 +223,7 @@ if (!eatSound) {
     while (!startGame) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
-            cleanUp(window, renderer, font,music,{coverTexture});
+            cleanUp(window, renderer, font,startMusic,{coverTexture});
             Mix_FreeChunk(eatSound);
             Mix_CloseAudio();
                 return 0;
@@ -235,37 +243,37 @@ if (!eatSound) {
     headTexture = loadTexture(renderer, "snake_head.png");
 
     if (!headTexture) {
-        cleanUp(window, renderer, font,music, {});
+        cleanUp(window, renderer, font, startMusic, {});
         return 1;
     }
 
     bodyTexture = loadTexture(renderer, "snake_body.png");
     if (!bodyTexture) {
-        cleanUp(window, renderer, font,music, {headTexture});
+        cleanUp(window, renderer, font,startMusic, {headTexture});
         return 1;
     }
 
     tailTexture = loadTexture(renderer, "snake_tail.png");
     if (!tailTexture) {
-        cleanUp(window, renderer, font,music, {headTexture, bodyTexture});
+        cleanUp(window, renderer, font,startMusic, {headTexture, bodyTexture});
         return 1;
     }
 
     backgroundTexture = loadTexture(renderer, "snake_background.png");
     if (!backgroundTexture) {
-        cleanUp(window, renderer, font,music, {headTexture, bodyTexture, tailTexture});
+        cleanUp(window, renderer, font,startMusic, {headTexture, bodyTexture, tailTexture});
         return 1;
     }
 
     foodTexture = loadTexture(renderer, "food.png");
     if (!foodTexture) {
-        cleanUp(window, renderer, font,music, {headTexture, bodyTexture, tailTexture, backgroundTexture});
+        cleanUp(window, renderer, font,startMusic, {headTexture, bodyTexture, tailTexture, backgroundTexture});
         return 1;
     }
 
     bonusFoodTexture = loadTexture(renderer, "bonus_food.png");
     if (!bonusFoodTexture) {
-        cleanUp(window, renderer, font,music, {headTexture, bodyTexture, tailTexture, backgroundTexture, foodTexture});
+        cleanUp(window, renderer, font,startMusic, {headTexture, bodyTexture, tailTexture, backgroundTexture, foodTexture});
         return 1;
     }
 
@@ -296,16 +304,12 @@ if (!eatSound) {
     int bonusFoodX = 0;
     int bonusFoodY = 0;
     Uint32 bonusFoodStartTime = 0;
-    auto currentMusic=music;
+    auto currentMusic=startMusic;
     Mix_PlayMusic(currentMusic, -1);
 
     // Main game loop
     while (!quit) {
-        // if( startGame && currentMusic!=gamebackground)
-        // {
-        //     currentMusic=gamebackground;
-        //      Mix_PlayMusic(currentMusic, -1);
-        // }
+        
         // Handle events
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
@@ -339,7 +343,11 @@ if (!eatSound) {
                 }
             }
         }
-       
+       if( !gameover && currentMusic!=gameBackground)
+        {
+            currentMusic=gameBackground;
+             Mix_PlayMusic(currentMusic, -1);
+        }
        
         if (!gameover) {
             // Move snake
@@ -370,6 +378,7 @@ if (!eatSound) {
                 // Activate bonus food after eating 10 regular food
                 if (foodEatenCount % 10 == 0) {
                     bonusFoodActive = true;
+                    Mix_PlayChannel(-1, bonusSound, 0); 
                     bonusFoodX = (rand() % (WINDOW_WIDTH / FOOD_SIZE)) * FOOD_SIZE;
                     bonusFoodY = (rand() % (WINDOW_HEIGHT / FOOD_SIZE)) * FOOD_SIZE;
                     while (checkFoodOnSnake(body, bonusFoodX, bonusFoodY)) {
@@ -450,8 +459,10 @@ if (!eatSound) {
         SDL_RenderCopy(renderer, scoreTexture, NULL, &scoreRect);
         SDL_FreeSurface(scoreSurface);
         SDL_DestroyTexture(scoreTexture);
+        
         if(gameover && currentMusic!=gameOverMusic){
             currentMusic=gameOverMusic;
+            Mix_FreeMusic(gameBackground);
             Mix_PlayMusic(currentMusic, -1);
 
         }
@@ -488,9 +499,9 @@ if (!eatSound) {
     }
     // Clean up game over music
     Mix_FreeMusic(gameOverMusic);
-    Mix_FreeMusic(gamebackground);
+   
     // Cleanup
-    cleanUp(window, renderer, font,music, {headTexture, bodyTexture, tailTexture, backgroundTexture, foodTexture, bonusFoodTexture});
+    cleanUp(window, renderer, font,startMusic, {headTexture, bodyTexture, tailTexture, backgroundTexture, foodTexture, bonusFoodTexture});
     
     return 0;
 }
