@@ -3,10 +3,11 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
-
+using namespace std;
 //  ......................
-const int WINDOW_WIDTH = 854;
-const int WINDOW_HEIGHT = 580;
+
+const int WINDOW_WIDTH = 800;
+const int WINDOW_HEIGHT = 600;
 const int RECTANGLE_SIZE = 20;
 const int FOOD_SIZE = 20;
 const int SNAKE_SPEED = 150;
@@ -26,13 +27,16 @@ SDL_Texture* tailTexture =NULL;
 SDL_Texture* backgroundTexture =NULL;
 SDL_Texture* foodTexture =NULL;
 SDL_Texture* bonusFoodTexture = NULL;
-
-
+SDL_Texture* menuTexture = NULL;
+SDL_Texture *gameIcon = NULL;
+SDL_Texture *highScoresIcon = NULL;
+SDL_Texture *settingsIcon = NULL;
 struct Snake {
     int x, y;
-    double angle; // Angle for rotation
+    double angle;
 };
 enum GameState {
+   
     MAIN_MENU,
     GAME,
     HIGH_SCORES,
@@ -78,10 +82,17 @@ bool checkFoodOnSnake(const std::vector<Snake>& body, int x, int y) {
 
 
 SDL_Texture* loadTexture(SDL_Renderer* renderer, const std::string& path) {
+    SDL_Texture* newTexture = NULL;
     SDL_Surface* surface = IMG_Load(path.c_str());
     if (!surface) {
-        std::cerr << "Unable to load image! SDL_image Error: " << IMG_GetError() << " for image: " << path << std::endl;
+        cout<< "Unable to load image! SDL_image Error: " << IMG_GetError() << " for image: " << path <<endl;
         return nullptr;
+    }
+    else{
+        newTexture = SDL_CreateTextureFromSurface(renderer, surface);
+        if (newTexture == NULL) {
+            std::cerr << "Unable to create texture from " << path << "! SDL Error: " << SDL_GetError() << std::endl;
+        }
     }
     SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
     SDL_FreeSurface(surface);
@@ -97,8 +108,8 @@ void cleanUp(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font,  Mix_Mu
     SDL_DestroyWindow(window);
     TTF_CloseFont(font);
     Mix_FreeMusic(startMusic);
-    Mix_Quit();
 
+    Mix_Quit();
     TTF_Quit();
     IMG_Quit();
     Mix_FreeChunk(eatSound);
@@ -142,6 +153,125 @@ void handleEvents(SDL_Event& e, int& dx, int& dy){
             }
         }
 }
+
+void renderText(SDL_Renderer* renderer, const std::string& text, int x, int y) {
+    SDL_Color textColor = {255, 255, 255, 255};
+    SDL_Surface* textSurface = TTF_RenderText_Solid(font, text.c_str(), textColor);
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_Rect textRect = {x, y, textSurface->w, textSurface->h};
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+}/////
+void renderMainMenu(SDL_Renderer* renderer, SDL_Texture* gameIcon, SDL_Texture* highScoresIcon, SDL_Texture* settingsIcon,GameState selectedItem, SDL_Texture*  menuTexture) {
+    SDL_RenderClear(renderer); // Clear the screen
+    //SDL_Rect coverTexture = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
+    SDL_RenderCopy(renderer,  menuTexture, NULL, NULL);
+    SDL_Rect dstRect;
+    SDL_Color highlightColor = {255, 255, 0, 255}; // Yellow color for highlighting
+    SDL_Color normalColor = {255, 255, 255, 255};  // White color for normal
+
+    // Render Game Icon
+    dstRect = {250, 100, 250, 100};
+    if (selectedItem == GAME) {
+        SDL_SetTextureColorMod(gameIcon, highlightColor.r, highlightColor.g, highlightColor.b); // Highlight
+    } else {
+        SDL_SetTextureColorMod(gameIcon, normalColor.r, normalColor.g, normalColor.b); // Normal
+    }
+    SDL_RenderCopy(renderer, gameIcon, NULL, &dstRect);
+
+    // Render High Scores Icon
+    dstRect = {250, 200, 250, 100};
+    if (selectedItem == HIGH_SCORES) {
+        SDL_SetTextureColorMod(highScoresIcon, highlightColor.r, highlightColor.g, highlightColor.b); // Highlight
+    } else {
+        SDL_SetTextureColorMod(highScoresIcon, normalColor.r, normalColor.g, normalColor.b); // Normal
+    }
+    SDL_RenderCopy(renderer, highScoresIcon, NULL, &dstRect);
+
+    // Render Settings Icon
+    dstRect = {250, 300, 250, 100};
+    if (selectedItem == SETTINGS) {
+        SDL_SetTextureColorMod(settingsIcon, highlightColor.r, highlightColor.g, highlightColor.b); // Highlight
+    } else {
+        SDL_SetTextureColorMod(settingsIcon, normalColor.r, normalColor.g, normalColor.b); // Normal
+    }
+    SDL_RenderCopy(renderer, settingsIcon, NULL, &dstRect);
+
+    SDL_RenderPresent(renderer); // Present the renderer
+}
+void mainMenuLoop(SDL_Renderer* renderer) {
+    SDL_Event e;
+    bool menuRunning = true;
+    GameState selectedItem = GAME; // Default selected item
+
+    // Load icons
+    SDL_Texture* gameIcon = loadTexture(renderer, "play.png");
+    SDL_Texture* highScoresIcon = loadTexture(renderer, "high_score.png");
+    SDL_Texture* settingsIcon = loadTexture(renderer, "setting.png");
+
+    while (menuRunning) {
+        while (SDL_PollEvent(&e) != 0) {
+            if (e.type == SDL_QUIT) {
+                menuRunning = false;
+                currentState = QUIT;
+            } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    int x, y;
+                    SDL_GetMouseState(&x, &y);
+
+                    // Check if mouse is over any menu option
+                    if (x >= 250 && x <= 500) {
+                        if (y >= 100 && y <= 200) {
+                            currentState = GAME;
+                            menuRunning = false;
+                        } else if (y >= 200 && y <= 300) {
+                            currentState = HIGH_SCORES;
+                            menuRunning = false;
+                        } else if (y >= 300 && y <= 400) {
+                            currentState = SETTINGS;
+                            menuRunning = false;
+                        }
+                    }
+                }
+            } else if (e.type == SDL_KEYDOWN) {
+                switch (e.key.keysym.sym) {
+                    case SDLK_UP:
+                        if (selectedItem == GAME) {
+                            selectedItem = SETTINGS;
+                        } else if (selectedItem == HIGH_SCORES) {
+                            selectedItem = GAME;
+                        } else if (selectedItem == SETTINGS) {
+                            selectedItem = HIGH_SCORES;
+                        }
+                        break;
+                    case SDLK_DOWN:
+                        if (selectedItem == GAME) {
+                            selectedItem = HIGH_SCORES;
+                        } else if (selectedItem == HIGH_SCORES) {
+                            selectedItem = SETTINGS;
+                        } else if (selectedItem == SETTINGS) {
+                            selectedItem = GAME;
+                        }
+                        break;
+                    case SDLK_RETURN:
+                        currentState = selectedItem;
+                        menuRunning = false;
+                        break;
+                }
+            }
+        }
+
+        renderMainMenu(renderer, gameIcon, highScoresIcon, settingsIcon, selectedItem,  menuTexture);
+    }
+
+    // Clean up
+    if (gameIcon) SDL_DestroyTexture(gameIcon);
+    if (highScoresIcon) SDL_DestroyTexture(highScoresIcon);
+    if (settingsIcon) SDL_DestroyTexture(settingsIcon);
+}
+
+
 void renderGame(SDL_Renderer* renderer, const std::vector<Snake>& body, int foodX, int foodY, bool bonusFoodActive, int bonusFoodX, int bonusFoodY, int score, bool gameover){
     SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, backgroundTexture, NULL, NULL); // Draw the background
@@ -260,13 +390,14 @@ void initializeTextures(){
         std::cerr << "Failed to load cover texture!" << std::endl;
         exit(1);
     }
+    menuTexture=  loadTexture(renderer, "menu_cover.png");
     headTexture = loadTexture(renderer, "snake_head.png");
     bodyTexture = loadTexture(renderer, "snake_body.png");
     tailTexture = loadTexture(renderer, "snake_tail.png");
     backgroundTexture = loadTexture(renderer, "snake_background.png");
     foodTexture = loadTexture(renderer, "food.png");
     bonusFoodTexture = loadTexture(renderer, "bonus_food.png");
-    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture) {
+    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture) {
         std::cerr << "Failed to load one or more textures!" << std::endl;
         exit(1);
     }
@@ -285,49 +416,25 @@ void initializeSounds(){
 
 
 }
-void renderText(SDL_Renderer* renderer, const std::string& text, int x, int y) {
-    SDL_Color textColor = {255, 255, 255, 255};
-    SDL_Surface* textSurface = TTF_RenderText_Solid(font, text.c_str(), textColor);
-    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    SDL_Rect textRect = {x, y, textSurface->w, textSurface->h};
-    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
-}
 
-
-int main(int argc, char* args[]) {
-   initialize();
-   initializeTextures();
-   initializeSounds();
-    
-    Mix_PlayMusic(startMusic, -1);
-
-    SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, coverTexture, NULL, NULL);
-
-
-    SDL_RenderPresent(renderer);
-
-    // Wait for a key press to start the game
-    bool startGame = false;
+void gameLoop(){
+     bool startGame = true;
     SDL_Event e;
-    while (!startGame) {
+    while (startGame) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
+                startGame=false;
+                currentState=QUIT;
             cleanUp(window, renderer, font,startMusic,{coverTexture});
             Mix_FreeChunk(eatSound);
             Mix_CloseAudio();
-                return 0;
-            } else if (e.type == SDL_KEYDOWN) {
-                startGame = true;
-                  
+                
             }
         }
-    }
+    
     
     SDL_DestroyTexture(coverTexture);
-    
+    SDL_RenderClear(renderer);
   
 
     // Game loop variables
@@ -450,6 +557,109 @@ int main(int argc, char* args[]) {
     }
     // Clean up game over music
     Mix_FreeMusic(gameOverMusic);
+    SDL_RenderPresent(renderer);
+    }
+}
+void highScoresLoop() {
+    bool highScoresRunning = true;
+    SDL_Event e;
+
+    while (highScoresRunning) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                highScoresRunning = false;
+                quit = true;
+            } else if (e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.sym == SDLK_ESCAPE) {
+                    highScoresRunning = false;
+                }
+            }
+        }
+
+        SDL_RenderClear(renderer);
+        renderText(renderer, "High Scores", 100, 100);
+        renderText(renderer, "Press ESC to return to the main menu", 100, 200);
+        SDL_RenderPresent(renderer);
+    }
+}
+void settingsLoop() {
+    bool settingsRunning = true;
+    SDL_Event e;
+
+    while (settingsRunning) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                settingsRunning = false;
+                quit = true;
+            } else if (e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.sym == SDLK_ESCAPE) {
+                    settingsRunning = false;
+                }
+            }
+        }
+
+        SDL_RenderClear(renderer);
+        renderText(renderer, "Settings", 100, 100);
+        renderText(renderer, "Press ESC to return to the main menu", 100, 200);
+        SDL_RenderPresent(renderer);
+    }
+}
+void coverSnakeLoop(SDL_Renderer* renderer, TTF_Font* font) {
+    SDL_Event e;
+    bool waiting = true;
+
+    // Clear screen
+    SDL_RenderClear(renderer);
+    // Render cover snake screen (You can add more graphics if needed)
+   SDL_RenderCopy(renderer, coverTexture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+
+    // Wait for any key press
+    while (waiting) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_KEYDOWN || e.type == SDL_QUIT) {
+                waiting = false;
+            }
+        }
+    }
+}
+
+
+int main(int argc, char* args[]) {
+   initialize();
+   initializeTextures();
+   initializeSounds();
+    
+    Mix_PlayMusic(startMusic, -1);
+
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, coverTexture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+    coverSnakeLoop(renderer, font);
+
+       while (currentState != QUIT) {
+        switch (currentState) {
+            case MAIN_MENU:
+                mainMenuLoop(renderer);
+                break;
+            case GAME:
+                gameLoop();
+                currentState = MAIN_MENU;
+                break;
+            case HIGH_SCORES:
+                highScoresLoop();
+                currentState = MAIN_MENU;
+                break;
+            case SETTINGS:
+                settingsLoop();
+                currentState = MAIN_MENU;
+                break;
+            default:
+                break;
+        }
+    }
+
+    
    
     // Cleanup
     cleanUp(window, renderer, font,startMusic, {headTexture, bodyTexture, tailTexture, backgroundTexture, foodTexture, bonusFoodTexture});
