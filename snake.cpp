@@ -318,7 +318,7 @@ void renderGame(SDL_Renderer* renderer, const std::vector<Snake>& body, int food
         // Display game over message if the game is over
         if (gameover) {
             SDL_Color textColor = {255, 0, 0, 255}; // Red color for text
-            SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "YOUR GAME IS OVER", textColor);
+            SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "GAME OVER", textColor);
             SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
             SDL_Rect messageRect;
             messageRect.x = WINDOW_WIDTH / 2 - surfaceMessage->w / 2;
@@ -502,8 +502,8 @@ void gameLoop(){
                 // Increase score by 10
                 score += 10;
                 foodEatenCount++;
-                // Activate bonus food after eating 10 regular food
-                if (foodEatenCount % 10 == 0) {
+                // Activate bonus food after eating 5 regular food
+                if (foodEatenCount % 5 == 0) {
                     bonusFoodActive = true;
                     Mix_PlayChannel(-1, bonusSound, 0); 
                     bonusFoodX = (rand() % (WINDOW_WIDTH / FOOD_SIZE)) * FOOD_SIZE;
