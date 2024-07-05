@@ -32,6 +32,7 @@ SDL_Texture *gameIcon = NULL;
 SDL_Texture *highScoresIcon = NULL;
 SDL_Texture *settingsIcon = NULL;
 SDL_Texture *highScoreBG = NULL;
+SDL_Texture* returnIconTexture =NULL;
 
 const char *filename = "highscore.txt";
 int highScore;
@@ -431,7 +432,8 @@ void initializeTextures(){
     backgroundTexture = loadTexture(renderer, "snake_background.png");
     foodTexture = loadTexture(renderer, "food.png");
     bonusFoodTexture = loadTexture(renderer, "bonus_food.png");
-    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture || !highScoreBG) {
+    returnIconTexture = loadTexture(renderer, "returnbatton.png");
+    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture || !highScoreBG || !returnIconTexture) {
         std::cerr << "Failed to load one or more textures!" << std::endl;
         exit(1);
     }
@@ -600,6 +602,7 @@ void gameLoop(){
 }
 void showHighScores(SDL_Renderer* renderer, TTF_Font* font, int highScore)
 {
+   
     SDL_Color color = {102, 102, 0, 0};
     std::string highScoreText =std::to_string(highScore);
     SDL_Surface* surface = TTF_RenderText_Solid(font, highScoreText.c_str(), color);
@@ -613,6 +616,8 @@ void showHighScores(SDL_Renderer* renderer, TTF_Font* font, int highScore)
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, highScoreBG, NULL, NULL);
     SDL_RenderCopy(renderer, texture, NULL, &dstrect);
+
+    
     SDL_RenderPresent(renderer);
 
     SDL_FreeSurface(surface);
@@ -622,27 +627,38 @@ void highScoresLoop() {
     bool highScoresRunning = true;
     SDL_Event e;
     SDL_RenderClear(renderer);
+   
     
     loadHighScore(filename, highScore);
-    //cout << "Current high score: " << highScore <<endl;
     saveHighScore(filename, highScore);
+    showHighScores(renderer, font, highScore);
+    SDL_Rect dstRect = {390, 400, 50, 50};
+    SDL_RenderCopy(renderer, returnIconTexture, NULL, &dstRect);
+    
    
     while (highScoresRunning) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
                 highScoresRunning = false;
                 //quit = true;
-            } else if (e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_ESCAPE) {
-                    highScoresRunning = false;
+            } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    int x, y;
+                    SDL_GetMouseState(&x, &y);
+
+                    // Check if mouse is over any menu option
+                    if (x >= 390 && x <= 440) {
+                        if (y >= 400 && y <= 450) {
+                            //currentState = GAME;
+                            highScoresRunning = false;
+                        } 
+                    }
                 }
             }
         }
        
         
-        //renderText(renderer, "High Scores", 100, 100);
-        showHighScores(renderer, font, highScore);
-        //renderText(renderer, "Press ESC to return to the main menu", 100, 200);
+
         SDL_RenderPresent(renderer);
     }
 }
