@@ -31,6 +31,11 @@ SDL_Texture* menuTexture = NULL;
 SDL_Texture *gameIcon = NULL;
 SDL_Texture *highScoresIcon = NULL;
 SDL_Texture *settingsIcon = NULL;
+SDL_Texture *highScoreBG = NULL;
+
+const char *filename = "highscore.txt";
+int highScore;
+
 struct Snake {
     int x, y;
     double angle;
@@ -117,7 +122,35 @@ void cleanUp(SDL_Window* window, SDL_Renderer* renderer, TTF_Font* font,  Mix_Mu
     Mix_CloseAudio();
     SDL_Quit();
 }
+void saveHighScore(const char *filename, int highScore)
+{
+    std::ofstream file(filename);
+    if (file.is_open())
+    {
+        file << highScore;
+        file.close();
+    }
+    else
+    {
+        std::cout << "Unable to open file to write high score" << std::endl;
+    }
+}
 
+void loadHighScore(const char *filename, int &highScore)
+{
+    std::ifstream file(filename);
+    if (file.is_open())
+    {
+        file >> highScore;
+        file.close();
+    }
+    else
+    {
+        std::cout << "File does not exist. Creating a new high score file." << std::endl;
+        highScore = 0;
+        saveHighScore(filename, highScore); // Create the file with initial score 0
+    }
+}
 
 void handleEvents(SDL_Event& e, int& dx, int& dy){
     while (SDL_PollEvent(&e) != 0) {
@@ -394,10 +427,11 @@ void initializeTextures(){
     headTexture = loadTexture(renderer, "snake_head.png");
     bodyTexture = loadTexture(renderer, "snake_body.png");
     tailTexture = loadTexture(renderer, "snake_tail.png");
+    highScoreBG = loadTexture(renderer, "high_score_bg.png");
     backgroundTexture = loadTexture(renderer, "snake_background.png");
     foodTexture = loadTexture(renderer, "food.png");
     bonusFoodTexture = loadTexture(renderer, "bonus_food.png");
-    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture) {
+    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture || !highScoreBG) {
         std::cerr << "Failed to load one or more textures!" << std::endl;
         exit(1);
     }
@@ -544,6 +578,10 @@ void gameLoop(){
             }
             body.insert(body.begin(), {nextX, nextY, atan2(dy, dx) * 180 / M_PI});
         }
+        if(score>highScore){
+            highScore=score;
+            saveHighScore(filename,highScore);
+        }
 
         // Render *************
          if(gameover && currentMusic!=gameOverMusic){
@@ -560,25 +598,51 @@ void gameLoop(){
     SDL_RenderPresent(renderer);
     }
 }
+void showHighScores(SDL_Renderer* renderer, TTF_Font* font, int highScore)
+{
+    SDL_Color color = {102, 102, 0, 0};
+    std::string highScoreText =std::to_string(highScore);
+    SDL_Surface* surface = TTF_RenderText_Solid(font, highScoreText.c_str(), color);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    
+    int texW = 0;
+    int texH = 0;
+    SDL_QueryTexture(texture, NULL, NULL, &texW, &texH);
+    SDL_Rect dstrect = {390, 300, texW, texH};
+
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, highScoreBG, NULL, NULL);
+    SDL_RenderCopy(renderer, texture, NULL, &dstrect);
+    SDL_RenderPresent(renderer);
+
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+}
 void highScoresLoop() {
     bool highScoresRunning = true;
     SDL_Event e;
-
+    SDL_RenderClear(renderer);
+    
+    loadHighScore(filename, highScore);
+    //cout << "Current high score: " << highScore <<endl;
+    saveHighScore(filename, highScore);
+   
     while (highScoresRunning) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
                 highScoresRunning = false;
-                quit = true;
+                //quit = true;
             } else if (e.type == SDL_KEYDOWN) {
                 if (e.key.keysym.sym == SDLK_ESCAPE) {
                     highScoresRunning = false;
                 }
             }
         }
-
-        SDL_RenderClear(renderer);
-        renderText(renderer, "High Scores", 100, 100);
-        renderText(renderer, "Press ESC to return to the main menu", 100, 200);
+       
+        
+        //renderText(renderer, "High Scores", 100, 100);
+        showHighScores(renderer, font, highScore);
+        //renderText(renderer, "Press ESC to return to the main menu", 100, 200);
         SDL_RenderPresent(renderer);
     }
 }
@@ -590,7 +654,7 @@ void settingsLoop() {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
                 settingsRunning = false;
-                quit = true;
+                //quit = true;
             } else if (e.type == SDL_KEYDOWN) {
                 if (e.key.keysym.sym == SDLK_ESCAPE) {
                     settingsRunning = false;
@@ -598,8 +662,9 @@ void settingsLoop() {
             }
         }
 
-        SDL_RenderClear(renderer);
+        
         renderText(renderer, "Settings", 100, 100);
+        SDL_RenderClear(renderer);
         renderText(renderer, "Press ESC to return to the main menu", 100, 200);
         SDL_RenderPresent(renderer);
     }
@@ -626,6 +691,7 @@ void coverSnakeLoop(SDL_Renderer* renderer, TTF_Font* font) {
 
 
 int main(int argc, char* args[]) {
+    
    initialize();
    initializeTextures();
    initializeSounds();
