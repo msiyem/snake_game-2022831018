@@ -32,7 +32,8 @@ SDL_Texture *gameIcon = NULL;
 SDL_Texture *highScoresIcon = NULL;
 SDL_Texture *settingsIcon = NULL;
 SDL_Texture *highScoreBG = NULL;
-SDL_Texture* returnIconTexture =NULL;
+SDL_Texture* returnIconTexture = NULL;
+SDL_Texture* gameOverTexture = NULL;
 
 const char *filename = "highscore.txt";
 int highScore;
@@ -47,6 +48,7 @@ enum GameState {
     GAME,
     HIGH_SCORES,
     SETTINGS,
+    EXIT,
     QUIT
 };
 
@@ -197,7 +199,7 @@ void renderText(SDL_Renderer* renderer, const std::string& text, int x, int y) {
     SDL_FreeSurface(textSurface);
     SDL_DestroyTexture(textTexture);
 }/////
-void renderMainMenu(SDL_Renderer* renderer, SDL_Texture* gameIcon, SDL_Texture* highScoresIcon, SDL_Texture* settingsIcon,GameState selectedItem, SDL_Texture*  menuTexture) {
+void renderMainMenu(SDL_Renderer* renderer, SDL_Texture* gameIcon, SDL_Texture* highScoresIcon, SDL_Texture* settingsIcon,GameState selectedItem, SDL_Texture*  menuTexture,SDL_Texture*  exitIcon) {
     SDL_RenderClear(renderer); // Clear the screen
     //SDL_Rect coverTexture = {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
     SDL_RenderCopy(renderer,  menuTexture, NULL, NULL);
@@ -231,6 +233,13 @@ void renderMainMenu(SDL_Renderer* renderer, SDL_Texture* gameIcon, SDL_Texture* 
         SDL_SetTextureColorMod(settingsIcon, normalColor.r, normalColor.g, normalColor.b); // Normal
     }
     SDL_RenderCopy(renderer, settingsIcon, NULL, &dstRect);
+    dstRect = {250, 400, 250, 100};
+    if (selectedItem == EXIT) {
+        SDL_SetTextureColorMod(exitIcon, highlightColor.r, highlightColor.g, highlightColor.b); // Highlight
+    } else {
+        SDL_SetTextureColorMod(exitIcon, normalColor.r, normalColor.g, normalColor.b); // Normal
+    }
+    SDL_RenderCopy(renderer, exitIcon, NULL, &dstRect);
 
     SDL_RenderPresent(renderer); // Present the renderer
 }
@@ -240,9 +249,10 @@ void mainMenuLoop(SDL_Renderer* renderer) {
     GameState selectedItem = GAME; // Default selected item
 
     // Load icons
-    SDL_Texture* gameIcon = loadTexture(renderer, "play.png");
+    SDL_Texture* gameIcon = loadTexture(renderer, "new_game.png");
     SDL_Texture* highScoresIcon = loadTexture(renderer, "high_score.png");
     SDL_Texture* settingsIcon = loadTexture(renderer, "setting.png");
+    SDL_Texture* exitIcon = loadTexture(renderer, "exit.png");
 
     while (menuRunning) {
         while (SDL_PollEvent(&e) != 0) {
@@ -266,18 +276,24 @@ void mainMenuLoop(SDL_Renderer* renderer) {
                             currentState = SETTINGS;
                             menuRunning = false;
                         }
+                        else if (y >= 400  && y <= 500) {
+                            currentState = EXIT;
+                            menuRunning = false;
+                        }
                     }
                 }
             } else if (e.type == SDL_KEYDOWN) {
                 switch (e.key.keysym.sym) {
                     case SDLK_UP:
                         if (selectedItem == GAME) {
+                            selectedItem = EXIT;
+                        }if (selectedItem == EXIT) {
                             selectedItem = SETTINGS;
+                        }else if (selectedItem == SETTINGS) {
+                            selectedItem = HIGH_SCORES;
                         } else if (selectedItem == HIGH_SCORES) {
                             selectedItem = GAME;
-                        } else if (selectedItem == SETTINGS) {
-                            selectedItem = HIGH_SCORES;
-                        }
+                        } 
                         break;
                     case SDLK_DOWN:
                         if (selectedItem == GAME) {
@@ -285,6 +301,9 @@ void mainMenuLoop(SDL_Renderer* renderer) {
                         } else if (selectedItem == HIGH_SCORES) {
                             selectedItem = SETTINGS;
                         } else if (selectedItem == SETTINGS) {
+                            selectedItem = EXIT;
+                        }
+                        else if (selectedItem == EXIT) {
                             selectedItem = GAME;
                         }
                         break;
@@ -296,13 +315,14 @@ void mainMenuLoop(SDL_Renderer* renderer) {
             }
         }
 
-        renderMainMenu(renderer, gameIcon, highScoresIcon, settingsIcon, selectedItem,  menuTexture);
+        renderMainMenu(renderer, gameIcon, highScoresIcon, settingsIcon, selectedItem,  menuTexture, exitIcon);
     }
 
     // Clean up
     if (gameIcon) SDL_DestroyTexture(gameIcon);
     if (highScoresIcon) SDL_DestroyTexture(highScoresIcon);
     if (settingsIcon) SDL_DestroyTexture(settingsIcon);
+    if (exitIcon) SDL_DestroyTexture(exitIcon);
 }
 
 
@@ -351,29 +371,19 @@ void renderGame(SDL_Renderer* renderer, const std::vector<Snake>& body, int food
 
         // Display game over message if the game is over
         if (gameover) {
-            SDL_Color textColor = {255, 0, 0, 255}; // Red color for text
-            SDL_Surface* surfaceMessage = TTF_RenderText_Solid(font, "GAME OVER", textColor);
-            SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
-            SDL_Rect messageRect;
-            messageRect.x = WINDOW_WIDTH / 2 - surfaceMessage->w / 2;
-            messageRect.y = WINDOW_HEIGHT / 2 - surfaceMessage->h / 2;
-            messageRect.w = surfaceMessage->w;
-            messageRect.h = surfaceMessage->h;
-            SDL_RenderCopy(renderer, message, NULL, &messageRect);
-            SDL_FreeSurface(surfaceMessage);
-            SDL_DestroyTexture(message);
-            // ...................
-         std::string finalScoreText = "SCORE : " + std::to_string(score);
-        SDL_Surface* finalScoreSurface = TTF_RenderText_Solid(font, finalScoreText.c_str(), textColor);
-        SDL_Texture* finalScoreTexture = SDL_CreateTextureFromSurface(renderer, finalScoreSurface);
-        SDL_Rect finalScoreRect;
-        finalScoreRect.x = WINDOW_WIDTH / 2 - finalScoreSurface->w / 2;
-        finalScoreRect.y = messageRect.y + messageRect.h + 10; // 10 pixels below the "GAME OVER" message
-        finalScoreRect.w = finalScoreSurface->w;
-        finalScoreRect.h = finalScoreSurface->h;
-        SDL_RenderCopy(renderer, finalScoreTexture, NULL, &finalScoreRect);
-        SDL_FreeSurface(finalScoreSurface);
-        SDL_DestroyTexture(finalScoreTexture);
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, gameOverTexture, NULL, NULL);
+        SDL_Color color = {102, 102, 0, 0};
+        std::string Score =std::to_string(score);
+        SDL_Surface* surface = TTF_RenderText_Solid(font, Score.c_str(), color);
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    
+    int texW = 0;
+    int texH = 0;
+    SDL_QueryTexture(texture, NULL, NULL, &texW, &texH);
+    SDL_Rect dstrect = {390, 417, texW, texH};
+    SDL_RenderCopy(renderer, texture, NULL, &dstrect);
+
         }
 
         SDL_RenderPresent(renderer);
@@ -433,7 +443,8 @@ void initializeTextures(){
     foodTexture = loadTexture(renderer, "food.png");
     bonusFoodTexture = loadTexture(renderer, "bonus_food.png");
     returnIconTexture = loadTexture(renderer, "returnbatton.png");
-    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture || !highScoreBG || !returnIconTexture) {
+    gameOverTexture =  loadTexture(renderer, "game_over.png");
+    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture || !highScoreBG || !returnIconTexture || !gameOverTexture) {
         std::cerr << "Failed to load one or more textures!" << std::endl;
         exit(1);
     }
@@ -665,22 +676,35 @@ void highScoresLoop() {
 void settingsLoop() {
     bool settingsRunning = true;
     SDL_Event e;
+    SDL_RenderClear(renderer);
+    /// add setting item-------
+    SDL_Rect dstRect = {390, 400, 50, 50};
+    SDL_RenderCopy(renderer, returnIconTexture, NULL, &dstRect);
+
 
     while (settingsRunning) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
                 settingsRunning = false;
                 //quit = true;
-            } else if (e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_ESCAPE) {
-                    settingsRunning = false;
+            } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    int x, y;
+                    SDL_GetMouseState(&x, &y);
+
+                    // Check if mouse is over any menu option
+                    if (x >= 390 && x <= 440) {
+                        if (y >= 400 && y <= 450) {
+                            //currentState = GAME;
+                            settingsRunning = false;
+                        } 
+                    }
                 }
             }
         }
 
         
         renderText(renderer, "Settings", 100, 100);
-        SDL_RenderClear(renderer);
         renderText(renderer, "Press ESC to return to the main menu", 100, 200);
         SDL_RenderPresent(renderer);
     }
@@ -705,7 +729,9 @@ void coverSnakeLoop(SDL_Renderer* renderer, TTF_Font* font) {
     }
 }
 
+void exitLoop(){
 
+}
 int main(int argc, char* args[]) {
     
    initialize();
@@ -734,6 +760,10 @@ int main(int argc, char* args[]) {
                 break;
             case SETTINGS:
                 settingsLoop();
+                currentState = MAIN_MENU;
+                break;
+            case EXIT:
+                exitLoop();
                 currentState = MAIN_MENU;
                 break;
             default:
