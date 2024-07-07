@@ -34,6 +34,7 @@ SDL_Texture *settingsIcon = NULL;
 SDL_Texture *highScoreBG = NULL;
 SDL_Texture* returnIconTexture = NULL;
 SDL_Texture* gameOverTexture = NULL;
+SDL_Texture* settingBackGround = NULL;
 
 const char *filename = "highscore.txt";
 int highScore;
@@ -52,7 +53,7 @@ enum GameState {
     QUIT
 };
 
-GameState currentState = MAIN_MENU;
+GameState currentState=MAIN_MENU;
 
 // Function to draw a rectangle (used for food, no longer needed after adding food image)
 void drawRectangle(SDL_Renderer* renderer, int x, int y, int size, SDL_Color color) {
@@ -377,16 +378,50 @@ void renderGame(SDL_Renderer* renderer, const std::vector<Snake>& body, int food
         std::string Score =std::to_string(score);
         SDL_Surface* surface = TTF_RenderText_Solid(font, Score.c_str(), color);
         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-    
     int texW = 0;
     int texH = 0;
-    SDL_QueryTexture(texture, NULL, NULL, &texW, &texH);
-    SDL_Rect dstrect = {390, 417, texW, texH};
+    SDL_QueryTexture(texture, NULL, NULL,&texW, &texH);
+    SDL_Rect dstrect = {388, 415,texW, texH};
     SDL_RenderCopy(renderer, texture, NULL, &dstrect);
+   
+     // Display return icon
+    SDL_Rect dstRect = {385, 460, 50, 50};
+    SDL_RenderCopy(renderer, returnIconTexture, NULL, &dstRect);
+    SDL_RenderPresent(renderer);
+    bool gameOverBackGround = true;
+    SDL_Event e;
 
+    while (gameOverBackGround) {
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                gameOverBackGround = false;
+                quit = true;
+            } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    int x, y;
+                    SDL_GetMouseState(&x, &y);
+
+                    // Check if mouse is over any menu option
+                    if (x >= 385 && x <= 435) {
+                        if (y >= 460 && y <= 510) {
+                            gameOverBackGround = false;
+                            mainMenuLoop(renderer);
+                            currentState = MAIN_MENU;
+                        } 
+                    }
+                }
+            }
         }
+       
+    
+    }
 
+    }
+    else{
         SDL_RenderPresent(renderer);
+    }
+
+        
 }
 void initialize(){
 if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
@@ -444,7 +479,8 @@ void initializeTextures(){
     bonusFoodTexture = loadTexture(renderer, "bonus_food.png");
     returnIconTexture = loadTexture(renderer, "returnbatton.png");
     gameOverTexture =  loadTexture(renderer, "game_over.png");
-    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture || !highScoreBG || !returnIconTexture || !gameOverTexture) {
+    settingBackGround =  loadTexture(renderer, "settingBG.png");
+    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture || !highScoreBG || !returnIconTexture || !gameOverTexture || !settingBackGround) {
         std::cerr << "Failed to load one or more textures!" << std::endl;
         exit(1);
     }
@@ -677,8 +713,9 @@ void settingsLoop() {
     bool settingsRunning = true;
     SDL_Event e;
     SDL_RenderClear(renderer);
-    /// add setting item-------
-    SDL_Rect dstRect = {390, 400, 50, 50};
+    SDL_RenderCopy(renderer, settingBackGround, NULL, NULL);
+   
+    SDL_Rect dstRect = {360, 550, 50, 50};
     SDL_RenderCopy(renderer, returnIconTexture, NULL, &dstRect);
 
 
@@ -693,8 +730,8 @@ void settingsLoop() {
                     SDL_GetMouseState(&x, &y);
 
                     // Check if mouse is over any menu option
-                    if (x >= 390 && x <= 440) {
-                        if (y >= 400 && y <= 450) {
+                    if (x >= 360 && x <= 410) {
+                        if (y >= 550 && y <= 600) {
                             //currentState = GAME;
                             settingsRunning = false;
                         } 
@@ -704,8 +741,8 @@ void settingsLoop() {
         }
 
         
-        renderText(renderer, "Settings", 100, 100);
-        renderText(renderer, "Press ESC to return to the main menu", 100, 200);
+        //renderText(renderer, "Settings", 100, 100);
+        //renderText(renderer, "Press ESC to return to the main menu", 100, 200);
         SDL_RenderPresent(renderer);
     }
 }
@@ -729,9 +766,8 @@ void coverSnakeLoop(SDL_Renderer* renderer, TTF_Font* font) {
     }
 }
 
-void exitLoop(){
 
-}
+    
 int main(int argc, char* args[]) {
     
    initialize();
@@ -763,13 +799,14 @@ int main(int argc, char* args[]) {
                 currentState = MAIN_MENU;
                 break;
             case EXIT:
-                exitLoop();
-                currentState = MAIN_MENU;
+                quit = true;
+                currentState=QUIT;
                 break;
             default:
                 break;
         }
     }
+
 
     
    
