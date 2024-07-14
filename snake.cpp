@@ -35,7 +35,10 @@ SDL_Texture *highScoreBG = NULL;
 SDL_Texture* returnIconTexture = NULL;
 SDL_Texture* gameOverTexture = NULL;
 SDL_Texture* settingBackGround = NULL;
-
+SDL_Texture* pauseBatton= NULL;
+SDL_Texture* resumeBatton= NULL;
+bool gamePaused = false;
+SDL_Rect buttonRect = {750, 20, 30, 30};
 const char *filename = "highscore.txt";
 int highScore;
 
@@ -155,12 +158,20 @@ void loadHighScore(const char *filename, int &highScore)
         saveHighScore(filename, highScore); // Create the file with initial score 0
     }
 }
-
+void handleButtonClick(int mouseX, int mouseY) {
+    if (mouseX >= buttonRect.x && mouseY >= buttonRect.y &&
+        mouseX <= buttonRect.x + buttonRect.w && mouseY <= buttonRect.y + buttonRect.h) {
+        gamePaused = !gamePaused;
+    }
+}
 void handleEvents(SDL_Event& e, int& dx, int& dy){
     while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
                 quit = true;
             } else if (e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.sym == SDLK_SPACE) {
+                gamePaused = !gamePaused;
+            } else if(!gamePaused){
                 switch (e.key.keysym.sym) {
                     case SDLK_UP:
                         if (dy != RECTANGLE_SIZE) {
@@ -188,7 +199,12 @@ void handleEvents(SDL_Event& e, int& dx, int& dy){
                         break;
                 }
             }
-        }
+        } else if (e.type == SDL_MOUSEBUTTONDOWN){
+            int x, y;
+            SDL_GetMouseState(&x, &y);
+            handleButtonClick(x, y);
+         }                
+    }
 }
 
 void renderText(SDL_Renderer* renderer, const std::string& text, int x, int y) {
@@ -327,7 +343,7 @@ void mainMenuLoop(SDL_Renderer* renderer) {
 }
 
 
-void renderGame(SDL_Renderer* renderer, const std::vector<Snake>& body, int foodX, int foodY, bool bonusFoodActive, int bonusFoodX, int bonusFoodY, int score, bool gameover){
+void renderGame(SDL_Renderer* renderer, const vector<Snake>body, int foodX, int foodY, bool bonusFoodActive, int bonusFoodX, int bonusFoodY, int score, bool gameover){
     SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, backgroundTexture, NULL, NULL); // Draw the background
 
@@ -418,10 +434,16 @@ void renderGame(SDL_Renderer* renderer, const std::vector<Snake>& body, int food
 
     }
     else{
-        SDL_RenderPresent(renderer);
+    if (!gamePaused) {
+        
+        SDL_RenderCopy(renderer, resumeBatton, NULL, &buttonRect);
+    } else {
+        
+        SDL_RenderCopy(renderer, pauseBatton, NULL, &buttonRect);
     }
 
-        
+    SDL_RenderPresent(renderer);
+    } 
 }
 void initialize(){
 if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
@@ -480,7 +502,9 @@ void initializeTextures(){
     returnIconTexture = loadTexture(renderer, "returnbatton.png");
     gameOverTexture =  loadTexture(renderer, "game_over.png");
     settingBackGround =  loadTexture(renderer, "settingBG.png");
-    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture || !highScoreBG || !returnIconTexture || !gameOverTexture || !settingBackGround) {
+    pauseBatton =  loadTexture(renderer, "stop_icon.png");
+    resumeBatton =  loadTexture(renderer, "play_icon.png");
+    if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture || !highScoreBG || !returnIconTexture || !gameOverTexture || !settingBackGround || !pauseBatton || !resumeBatton) {
         std::cerr << "Failed to load one or more textures!" << std::endl;
         exit(1);
     }
@@ -552,7 +576,7 @@ void gameLoop(){
 
     while (!quit) {
         handleEvents(e, dx, dy);
-        
+        if (!gamePaused) {
        if( !gameover && currentMusic!=gameBackground)
         {
             currentMusic=gameBackground;
@@ -565,11 +589,14 @@ void gameLoop(){
             int nextY = body[0].y + dy;
 
             // Wrap snake position around screen edges
-            if (nextX >= WINDOW_WIDTH) nextX = 0;
-            else if (nextX < 0) nextX = WINDOW_WIDTH - RECTANGLE_SIZE;
+            if(nextX>=WINDOW_WIDTH || nextX<0 || nextY >= WINDOW_HEIGHT || nextY<0){
+                gameover=true;
+            }
+            //if (nextX >= WINDOW_WIDTH) nextX = 0;
+            //else if (nextX < 0) nextX = WINDOW_WIDTH - RECTANGLE_SIZE;
 
-            if (nextY >= WINDOW_HEIGHT) nextY = 0;
-            else if (nextY < 0) nextY = WINDOW_HEIGHT - RECTANGLE_SIZE;
+            //if (nextY >= WINDOW_HEIGHT) nextY = 0;
+            //else if (nextY < 0) nextY = WINDOW_HEIGHT - RECTANGLE_SIZE;
 
             // Check if snake eats regular food
             if (checkCollision(body[0], foodX, foodY)) {
@@ -638,6 +665,7 @@ void gameLoop(){
             Mix_FreeMusic(gameBackground);
             Mix_PlayMusic(currentMusic, -1);
 
+        }
         }
         renderGame(renderer, body, foodX, foodY, bonusFoodActive, bonusFoodX, bonusFoodY, score, gameover);
         SDL_Delay(SNAKE_SPEED);
