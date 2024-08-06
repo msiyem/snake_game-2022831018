@@ -10,7 +10,7 @@ const int WINDOW_WIDTH = 800;
 const int WINDOW_HEIGHT = 600;
 const int RECTANGLE_SIZE = 20;
 const int FOOD_SIZE = 20;
-const int SNAKE_SPEED = 150;
+const int SNAKE_SPEED = 170;
 bool quit = false;
 Mix_Chunk* eatSound =NULL;
 Mix_Music* startMusic =NULL;
@@ -266,10 +266,10 @@ void mainMenuLoop(SDL_Renderer* renderer) {
     GameState selectedItem = GAME; // Default selected item
 
     // Load icons
-    SDL_Texture* gameIcon = loadTexture(renderer, "new_game.png");
-    SDL_Texture* highScoresIcon = loadTexture(renderer, "high_score.png");
-    SDL_Texture* settingsIcon = loadTexture(renderer, "setting.png");
-    SDL_Texture* exitIcon = loadTexture(renderer, "exit.png");
+    SDL_Texture* gameIcon = loadTexture(renderer, "photo/new_game.png");
+    SDL_Texture* highScoresIcon = loadTexture(renderer, "photo/high_score.png");
+    SDL_Texture* settingsIcon = loadTexture(renderer, "photo/setting.png");
+    SDL_Texture* exitIcon = loadTexture(renderer, "photo/exit.png");
 
     while (menuRunning) {
         while (SDL_PollEvent(&e) != 0) {
@@ -486,24 +486,24 @@ if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
     }
 }
 void initializeTextures(){
-    coverTexture = loadTexture(renderer, "snake_cover.png");
+    coverTexture = loadTexture(renderer, "photo/snake_cover.png");
     if (!coverTexture) {
         std::cerr << "Failed to load cover texture!" << std::endl;
         exit(1);
     }
-    menuTexture=  loadTexture(renderer, "menu_cover.png");
-    headTexture = loadTexture(renderer, "snake_head.png");
-    bodyTexture = loadTexture(renderer, "snake_body.png");
-    tailTexture = loadTexture(renderer, "snake_tail.png");
-    highScoreBG = loadTexture(renderer, "high_score_bg.png");
-    backgroundTexture = loadTexture(renderer, "snake_background.png");
-    foodTexture = loadTexture(renderer, "food.png");
-    bonusFoodTexture = loadTexture(renderer, "bonus_food.png");
-    returnIconTexture = loadTexture(renderer, "returnbatton.png");
-    gameOverTexture =  loadTexture(renderer, "game_over.png");
-    settingBackGround =  loadTexture(renderer, "settingBG.png");
-    pauseBatton =  loadTexture(renderer, "stop_icon.png");
-    resumeBatton =  loadTexture(renderer, "play_icon.png");
+    menuTexture=  loadTexture(renderer, "photo/menu_cover.png");
+    headTexture = loadTexture(renderer, "photo/snake_head.png");
+    bodyTexture = loadTexture(renderer, "photo/snake_body.png");
+    tailTexture = loadTexture(renderer, "photo/snake_tail.png");
+    highScoreBG = loadTexture(renderer, "photo/high_score_bg.png");
+    backgroundTexture = loadTexture(renderer, "photo/snake_background.png");
+    foodTexture = loadTexture(renderer, "photo/food.png");
+    bonusFoodTexture = loadTexture(renderer, "photo/bonus_food.png");
+    returnIconTexture = loadTexture(renderer, "photo/returnbatton.png");
+    gameOverTexture =  loadTexture(renderer, "photo/game_over.png");
+    settingBackGround =  loadTexture(renderer, "photo/settingBG.png");
+    pauseBatton =  loadTexture(renderer, "photo/stop_icon.png");
+    resumeBatton =  loadTexture(renderer, "photo/play_icon.png");
     if (!headTexture || !bodyTexture || !tailTexture || !backgroundTexture || !foodTexture || !bonusFoodTexture || !menuTexture || !highScoreBG || !returnIconTexture || !gameOverTexture || !settingBackGround || !pauseBatton || !resumeBatton) {
         std::cerr << "Failed to load one or more textures!" << std::endl;
         exit(1);
@@ -511,11 +511,11 @@ void initializeTextures(){
 
 }
 void initializeSounds(){
-    startMusic = Mix_LoadMUS("startgame.mp3");
-    gameOverMusic = Mix_LoadMUS("gameover.mp3");
-    gameBackground= Mix_LoadMUS("gameback.mp3");
-    eatSound = Mix_LoadWAV("eat.wav");
-    bonusSound = Mix_LoadWAV("ting.wav");
+    startMusic = Mix_LoadMUS("sound/startgame.mp3");
+    gameOverMusic = Mix_LoadMUS("sound/gameover.mp3");
+    gameBackground= Mix_LoadMUS("sound/gameback.mp3");
+    eatSound = Mix_LoadWAV("sound/eat.wav");
+    bonusSound = Mix_LoadWAV("sound/ting.wav");
     if (!startMusic || !gameOverMusic || !gameBackground || !eatSound || !bonusSound) {
         std::cerr << "Failed to load one or more sound files!" << std::endl;
         exit(1);
